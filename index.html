@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mo Art Studio - Rafayel's Canvas</title>
+    <title>Mo Art Studio - Local Version</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -14,9 +14,6 @@
         "imports": {
             "react": "https://esm.sh/react@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
             "lucide-react": "https://esm.sh/lucide-react@0.294.0"
         }
     }
@@ -24,7 +21,6 @@
 
     <style>
         body { margin: 0; padding: 0; background-color: #0f0a20; overflow-x: hidden; }
-        /* 隱藏捲軸但保留功能 */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -32,80 +28,16 @@
 <body>
     <div id="root"></div>
 
-    <script>
-        // ▼▼▼ 請在下方引號內填入您的 Firebase Config JSON 字串 ▼▼▼
-        // 格式範例： '{"apiKey": "...", "authDomain": "...", ...}'
-        
-        window.__firebase_config = '{}'; 
-        
-        // 如果您有特定的 App ID (用於區分不同使用者的路徑)，可修改下方
-        window.__app_id = 'mo-art-studio-v1';
-    </script>
-
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useRef, useMemo } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { initializeApp } from 'firebase/app';
         import {
-          getAuth,
-          signInAnonymously,
-          onAuthStateChanged,
-          signInWithCustomToken
-        } from 'firebase/auth';
-        import {
-          getFirestore,
-          collection,
-          addDoc,
-          onSnapshot,
-          deleteDoc,
-          doc,
-          updateDoc,
-          setDoc,
-          getDoc,
-          serverTimestamp,
-          writeBatch
-        } from 'firebase/firestore';
-        import {
-          Plus,
-          Trash2,
-          Calendar,
-          CheckCircle2,
-          Circle,
-          ArrowUpDown,
-          X,
-          ChevronLeft,
-          AlertTriangle,
-          Download,
-          Upload,
-          Database,
-          Camera,
-          User,
-          Edit3,
-          Save,
-          Palette,
-          Clock,
-          ExternalLink,
-          AlarmClock
+          Plus, Trash2, Calendar, CheckCircle2, Circle, ArrowUpDown, X, ChevronLeft,
+          AlertTriangle, Download, Upload, Database, Camera, User, Edit3, Save,
+          Palette, Clock, ExternalLink, AlarmClock
         } from 'lucide-react';
 
-        // --- Firebase 初始化 ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        
-        // 簡單的檢查，避免未設定 Config 就報錯
-        let app, auth, db;
-        if (Object.keys(firebaseConfig).length > 0) {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } else {
-            console.warn("Firebase Config 未設定，請在 HTML 檔案中填入設定。");
-        }
-        
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
         // --- 自定義 SVG 手繪風格圖標 (祁煜主題) ---
-
-        // 🖌️ 畫筆 (Brush)
         const BrushIcon = ({ size = 12, className = "" }) => (
           <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
             <path d="M2 22L13 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/> 
@@ -114,7 +46,6 @@
           </svg>
         );
 
-        // 🐠 小魚 (Fish) - 前三個稱號
         const FishIcon = ({ size = 12, className = "" }) => (
           <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
             <path d="M7 12 C 7 7.5 10.5 4 15 4 C 19.5 4 23 7.5 23 12 C 23 16.5 19.5 20 15 20 C 10.5 20 7 16.5 7 12 Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -123,18 +54,11 @@
           </svg>
         );
 
-        // 🦪 扇貝 (Scallop) - 圓滑版：中間圓潤高聳，兩側低
         const ScallopIcon = ({ size = 12, className = "" }) => (
           <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-            {/* 扇形主體 */}
             <path d="M3 13 C 4 10.5 5.5 10 7 10 C 9 5.5 15 5.5 17 10 C 18.5 10 20 10.5 21 13 C 21 18.5 16.5 22 12 22 C 7.5 22 3 18.5 3 13 Z" fill="currentColor" fillOpacity="0.1" stroke="none" />
-            
-            {/* 外輪廓線條 */}
             <path d="M3 13 C 4 10.5 5.5 10 7 10 C 9 5.5 15 5.5 17 10 C 18.5 10 20 10.5 21 13 C 21 18.5 16.5 22 12 22 C 7.5 22 3 18.5 3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            
-            {/* 底部連接處 */}
             <path d="M9 20C10 21.5 14 21.5 15 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            {/* 扇形紋理 */}
             <path d="M12 18V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="1 3"/>
             <path d="M9 17C8.5 15 8.5 10 9.5 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             <path d="M15 17C15.5 15 15.5 10 14.5 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -143,34 +67,24 @@
           </svg>
         );
 
-        // 👑 皇冠 (Crown) - 高級、神秘、細緻
         const CrownIcon = ({ size = 12, className = "" }) => (
           <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-            {/* 主體架構 */}
             <path d="M12 2L14.5 9L21 10L16 14L17.5 21L12 17L6.5 21L8 14L3 10L9.5 9L12 2Z" fill="currentColor" fillOpacity="0.1" stroke="none"/>
             <path d="M4 12L2 10L8 8L12 2L16 8L22 10L20 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 17L7 20L8 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 17L17 20L16 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            
-            {/* 中間的寶石/神聖核心 */}
             <path d="M12 12L12 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             <circle cx="12" cy="10" r="1.5" fill="currentColor" className="animate-pulse"/>
-            
-            {/* 懸浮的星光 */}
             <path d="M12 2L12 4M11 3L13 3" stroke="currentColor" strokeWidth="1" opacity="0.8"/>
             <path d="M22 10L20 10" stroke="currentColor" strokeWidth="1" opacity="0.6"/>
             <path d="M2 10L4 10" stroke="currentColor" strokeWidth="1" opacity="0.6"/>
           </svg>
         );
 
-        // 🍰 草莓蛋糕 (Cake) - 取代原本的貝殼，用於能量/貨幣
         const ShellIcon = ({ size = 12, className = "" }) => (
-          <span style={{ fontSize: size, display: 'inline-block', lineHeight: '1em' }} className={className} role="img" aria-label="cake">
-            🍰
-          </span>
+          <span style={{ fontSize: size, display: 'inline-block', lineHeight: '1em' }} className={className} role="img" aria-label="cake">🍰</span>
         );
 
-        // 🐚 珊瑚 (Coral)
         const CoralIcon = ({ size = 12, className = "" }) => (
           <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
             <path d="M12 20V10M12 10L8 6M12 10L16 6M8 14L5 11M16 14L19 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -178,25 +92,16 @@
           </svg>
         );
 
-        // --- 常量定義 ---
+        // --- Constants ---
         const TITLES = [
-          '魚魚的小海螺',
-          '魚魚的小海星',
-          '魚魚的小保鑣',
-          '祁煜的信徒',
-          '祁煜的契約者',
-          '祁煜的公主殿下',
-          '主聖的女王陛下',
-          '海神的小城主',
-          '海神的新娘'
+          '魚魚的小海螺', '魚魚的小海星', '魚魚的小保鑣', '祁煜的信徒', '祁煜的契約者',
+          '祁煜的公主殿下', '主聖的女王陛下', '海神的小城主', '海神的新娘'
         ];
 
-        // --- 任務分類 ---
         const ZONES = [
           { id: 'studio', label: 'Mo Art Studio', emoji: '🎨', color: 'bg-[#2e1065] text-purple-100 border-purple-800 ring-purple-800' },
           { id: 'urgent', label: '截稿地獄', emoji: '🔥', color: 'bg-[#450a0a] text-red-100 border-red-900 ring-red-800 shadow-[0_0_15px_rgba(220,38,38,0.4)]' },
           { id: 'hunter', label: '獵人協會', emoji: '⚔️', color: 'bg-[#1c1917] text-stone-300 border-stone-700 ring-stone-700' },
-          // 修改：白沙灣 -> 安蒙碎念
           { id: 'whitesand', label: '安蒙碎念', emoji: '🧔🏼', color: 'bg-[#0c4a6e] text-sky-200 border-sky-800 ring-sky-800' },
           { id: 'evol', label: 'Evol 特訓', emoji: '✨', color: 'bg-[#1e1b4b] text-indigo-200 border-indigo-900 ring-indigo-900' }, 
           { id: 'seafood', label: '海鮮採購', emoji: '🦀', color: 'bg-[#7f1d1d] text-red-200 border-red-900 ring-red-900' },
@@ -204,7 +109,6 @@
           { id: 'lemuria', label: '利莫里亞', emoji: '🏛️', color: 'bg-[#134e4a] text-teal-100 border-teal-900 ring-teal-900' },
         ];
 
-        // --- 報酬評估 (蛋糕) ---
         const SHELL_LEVELS = [
           { value: 1, label: '隨手塗鴉', iconCount: 1 },
           { value: 2, label: '有點靈感了！', iconCount: 2 },
@@ -213,11 +117,13 @@
           { value: 5, label: '可以開畫展了！', iconCount: 5 },
         ];
 
+        // --- 本地儲存 Key 定義 ---
+        const STORAGE_KEY_TASKS = 'rafayel_local_tasks_v1';
+        const STORAGE_KEY_AVATAR = 'rafayel_local_avatar_v1';
+
         function App() {
-          const [user, setUser] = useState(null);
           const [tasks, setTasks] = useState([]);
           const [loading, setLoading] = useState(true);
-          const [dataLoaded, setDataLoaded] = useState(false); // 新增：資料載入狀態
           const [avatar, setAvatar] = useState(null);
           
           const [isModalOpen, setIsModalOpen] = useState(false);
@@ -235,7 +141,6 @@
           const [editingTask, setEditingTask] = useState(null);
           const [editName, setEditName] = useState('');
           const [editDate, setEditDate] = useState('');
-          // 新增：暫存時間狀態 (預設 10:00)
           const [editTime, setEditTime] = useState('10:00');
 
           const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -260,50 +165,36 @@
           const titleIndex = Math.min(Math.floor(totalShellsConsumed / 100), TITLES.length - 1);
           const currentTitle = TITLES[titleIndex];
 
-          // --- Auth Setup ---
+          // --- 1. 初始化資料 (讀取 LocalStorage) ---
           useEffect(() => {
-            if (!auth) return;
-            const initAuth = async () => {
+            const loadData = () => {
               try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                  await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                  await signInAnonymously(auth);
+                const savedTasks = localStorage.getItem(STORAGE_KEY_TASKS);
+                if (savedTasks) {
+                  setTasks(JSON.parse(savedTasks));
                 }
-              } catch (err) { console.error("Auth Fail:", err); }
+                const savedAvatar = localStorage.getItem(STORAGE_KEY_AVATAR);
+                if (savedAvatar) {
+                  setAvatar(savedAvatar);
+                }
+              } catch (e) {
+                console.error("Load failed:", e);
+              } finally {
+                setLoading(false);
+              }
             };
-            initAuth();
-            const unsubscribe = onAuthStateChanged(auth, (curr) => {
-              setUser(curr);
-              if (curr) setLoading(false);
-            });
-            return () => unsubscribe();
+            loadData();
           }, []);
 
-          // --- Data Syncing ---
-          useEffect(() => {
-            if (!user || !db) return;
-            const loadProfile = async () => {
-              try {
-                const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile_rafayel_v1', 'info');
-                const pDoc = await getDoc(profileRef);
-                if (pDoc.exists()) {
-                  setAvatar(pDoc.data().avatar);
-                }
-              } catch (e) { console.error("Profile load err:", e); }
-            };
-            loadProfile();
-            const q = collection(db, 'artifacts', appId, 'users', user.uid, 'rafayel_tasks_v1');
-            const unsub = onSnapshot(q, (snap) => {
-              setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-              setDataLoaded(true); // 標記資料已載入
-            });
-            return () => unsub();
-          }, [user]);
+          // --- 2. 儲存資料 Helper ---
+          const saveTasksToStorage = (newTasks) => {
+            setTasks(newTasks);
+            localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(newTasks));
+          };
 
           // --- Celebration Logic ---
           useEffect(() => {
-            if (loading || !dataLoaded) return; // 確保資料載入後才開始判斷
+            if (loading) return; 
             if (prevTitleIndexRef.current === -1) {
               prevTitleIndexRef.current = titleIndex;
               return;
@@ -314,7 +205,7 @@
             } else if (titleIndex < prevTitleIndexRef.current) {
                 prevTitleIndexRef.current = titleIndex;
             }
-          }, [titleIndex, loading, dataLoaded]); // 加入 dataLoaded 依賴
+          }, [titleIndex, loading]);
 
           useEffect(() => {
             if (isCelebrationOpen) {
@@ -346,14 +237,13 @@
             e.target.value = '';
           };
 
-          // 修復：大頭照上傳邏輯重寫，使用 Image 物件確保載入
+          // 本地儲存大頭貼
           const handleCropSave = async () => {
-            if (!rawImage || !user) return;
-
+            if (!rawImage) return;
             try {
               const img = new Image();
               img.src = rawImage;
-              await new Promise(r => img.onload = r); // 等待圖片完全載入
+              await new Promise(r => img.onload = r);
 
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
@@ -368,30 +258,24 @@
               ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
               const b64 = canvas.toDataURL('image/jpeg', 0.85);
               
-              // 立即更新本地顯示
               setAvatar(b64);
+              localStorage.setItem(STORAGE_KEY_AVATAR, b64); // 存入 LocalStorage
               setIsCropModalOpen(false);
               setRawImage(null); 
-              
-              // 背景更新 Firestore
-              await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile_rafayel_v1', 'info'), { 
-                avatar: b64, 
-                updatedAt: serverTimestamp() 
-              });
             } catch(e) { 
-              console.error("Upload failed:", e); 
+              console.error("Crop failed:", e); 
             }
           };
 
           const handleImportCSV = (e) => {
             const file = e.target.files[0];
-            if (!file || !user) return;
+            if (!file) return;
             const reader = new FileReader();
-            reader.onload = async (event) => {
+            reader.onload = (event) => {
               const text = event.target.result;
               const lines = text.split('\n');
-              const batch = writeBatch(db);
-              let count = 0;
+              const importedTasks = [];
+              
               for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
@@ -399,11 +283,22 @@
                 if (!name) continue;
                 const zone = ZONES.find(z => zoneLabel && z.label.includes(zoneLabel.trim()))?.id || 'studio';
                 const shells = Number(shellsStr) || 1;
-                const newDocRef = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'rafayel_tasks_v1'));
-                batch.set(newDocRef, { name: name.trim(), zone, shells, paints: shells, deadline: deadline || '', completed: true, createdAt: serverTimestamp(), archivedFromImport: true });
-                count++;
+                
+                importedTasks.push({
+                   id: 'import_' + Date.now() + '_' + i,
+                   name: name.trim(),
+                   zone,
+                   shells,
+                   paints: shells,
+                   deadline: deadline || '',
+                   completed: true,
+                   createdAt: new Date().toISOString()
+                });
               }
-              if (count > 0) { try { await batch.commit(); } catch (err) { console.error("Import failed:", err); } }
+              
+              if (importedTasks.length > 0) {
+                  saveTasksToStorage([...tasks, ...importedTasks]);
+              }
             };
             reader.readAsText(file);
             e.target.value = null; 
@@ -421,44 +316,46 @@
             return `${year}-${month}-${day}`;
           };
 
-          const handleAddTask = async () => {
-            if (!user || !taskName.trim() || !selectedZone || !selectedShell || !deadline) return;
-            try {
-              await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'rafayel_tasks_v1'), {
-                name: taskName, 
-                zone: selectedZone, 
+          const handleAddTask = () => {
+            if (!taskName.trim() || !selectedZone || !selectedShell || !deadline) return;
+            
+            const newTask = {
+                id: Date.now().toString(),
+                name: taskName,
+                zone: selectedZone,
                 shells: Number(selectedShell),
                 paints: Number(selectedShell),
-                deadline, 
-                completed: false, 
-                createdAt: serverTimestamp()
-              });
-              resetForm();
-            } catch (e) { console.error("Add Err:", e); }
+                deadline,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            saveTasksToStorage([...tasks, newTask]);
+            resetForm();
           };
 
-          const handleToggleComplete = async (t) => {
-            if (!user || burstingTaskId) return;
+          const handleToggleComplete = (t) => {
+            if (burstingTaskId) return;
             setBurstingTaskId(t.id);
-            setTimeout(async () => {
-              await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'rafayel_tasks_v1', t.id), { completed: !t.completed });
+            setTimeout(() => {
+              const updatedTasks = tasks.map(task => 
+                 task.id === t.id ? { ...task, completed: !task.completed } : task
+              );
+              saveTasksToStorage(updatedTasks);
               setBurstingTaskId(null);
             }, 600);
           };
 
-          // 修復：刪除邏輯增強，加入 Loading 狀態
-          const confirmDelete = async () => {
-            if (!user || !taskToDelete || isDeleting) return;
+          const confirmDelete = () => {
+            if (!taskToDelete || isDeleting) return;
             setIsDeleting(true);
-            try {
-              await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'rafayel_tasks_v1', taskToDelete.id));
-              setTaskToDelete(null);
-              setEditingTask(null); 
-            } catch (e) { 
-              console.error("Delete failed:", e); 
-            } finally {
-              setIsDeleting(false);
-            }
+            setTimeout(() => { // 模擬一點延遲感
+                const updatedTasks = tasks.filter(t => t.id !== taskToDelete.id);
+                saveTasksToStorage(updatedTasks);
+                setTaskToDelete(null);
+                setEditingTask(null);
+                setIsDeleting(false);
+            }, 300);
           };
 
           const setDateShortcut = (type) => {
@@ -467,10 +364,9 @@
             setDeadline(toLocalYYYYMMDD(d));
           };
 
-          // 修改：更加穩健的日期格式化，避免時區問題導致日期錯誤
           const formatDate = (ds) => { 
             if(!ds) return ''; 
-            const [y, m, d] = ds.split('-'); // 直接拆解字串，不透過 new Date() 解析，避免時區偏移
+            const [y, m, d] = ds.split('-'); 
             return `${Number(m)}/${Number(d)}`; 
           };
           
@@ -478,7 +374,6 @@
           
           const exportCSV = () => {
             if (completedTasks.length === 0) return;
-            // 修改標題：貝殼數 -> 蛋糕數
             const csv = "\uFEFF任務名稱,區域,蛋糕數,日期\n" + completedTasks.map(t => `${t.name},${getZoneInfo(t.zone).label.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')},${t.shells || t.paints},${t.deadline}`).join("\n");
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
@@ -489,43 +384,39 @@
             setEditingTask(t); 
             setEditName(t.name); 
             setEditDate(t.deadline); 
-            setEditTime('10:00'); // 預設 10:00
+            setEditTime('10:00'); 
           };
           
-          const handleSaveEdit = async () => {
-            if (!user || !editingTask || !editName.trim()) return;
-            const updateData = { name: editName };
-            if(editDate) updateData.deadline = editDate;
-            await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'rafayel_tasks_v1', editingTask.id), updateData);
+          const handleSaveEdit = () => {
+            if (!editingTask || !editName.trim()) return;
+            const updatedTasks = tasks.map(t => {
+                if (t.id === editingTask.id) {
+                    return { ...t, name: editName, deadline: editDate || t.deadline };
+                }
+                return t;
+            });
+            saveTasksToStorage(updatedTasks);
             setEditingTask(null);
           };
 
-          // --- 新增：添加到 Google 日曆功能 (支援時間) ---
           const addToGoogleCalendar = () => {
             if (!editName || !editDate) return;
             
             const timeToUse = editTime || "09:00"; 
-            
-            // 建立本地 Date 物件
             const startDateTime = new Date(`${editDate}T${timeToUse}:00`);
-            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // 預設 1 小時
+            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); 
 
-            // 格式化為 UTC 字串 (YYYYMMDDTHHMMSSZ)
             const formatTime = (date) => date.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
-
             const startStr = formatTime(startDateTime);
             const endStr = formatTime(endDateTime);
 
             const details = encodeURIComponent("來自 Mo Art Studio 的委託");
-            const text = encodeURIComponent(editName); // 中文標題
-            
-            // 生成 URL (dates 格式: start/end)
+            const text = encodeURIComponent(editName); 
             const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}`;
             
             window.open(url, '_blank');
           };
 
-          // --- Title Icon Logic ---
           const getTitleIcon = (idx) => {
             if (idx >= 0 && idx <= 2) return <FishIcon size={16} className="text-purple-400 animate-bounce" />;
             if (idx >= 3 && idx <= 5) return <ScallopIcon size={16} className="text-pink-300 animate-pulse drop-shadow-[0_0_8px_rgba(244,114,182,0.6)]" />; 
@@ -537,26 +428,11 @@
             switch(step) {
               case 1: return { main: '輸入靈感', sub: 'INSPIRATION' };
               case 2: return { main: '選擇場景', sub: 'SCENARIO' };
-              // 修改：貝殼評估 -> 蛋糕評估
               case 3: return { main: '蛋糕評估', sub: 'ESTIMATION' };
               case 4: return { main: '確認委託', sub: 'CONFIRMATION' }; 
               default: return { main: '', sub: '' };
             }
           };
-
-          if (!app) {
-              return (
-                  <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-8 text-center font-sans">
-                    <h1 className="text-3xl font-bold mb-4 text-purple-400">尚未設定 Firebase</h1>
-                    <p className="text-slate-400 mb-8 max-w-md">
-                        請使用文字編輯器打開此 HTML 檔案，並在 <code>__firebase_config</code> 處填入您的 API 金鑰。
-                    </p>
-                    <div className="p-4 bg-black/50 rounded-lg text-left text-xs font-mono text-green-400 w-full max-w-sm overflow-x-auto">
-                        window.__firebase_config = '&#123; "apiKey": "...", ... &#125;';
-                    </div>
-                  </div>
-              )
-          }
 
           return (
             <div className="min-h-screen bg-gradient-to-br from-[#240078] to-[#C4529E] font-sans text-slate-200 pb-24 max-w-md mx-auto relative shadow-2xl overflow-hidden select-none">
@@ -642,7 +518,6 @@
                       {getTitleIcon(titleIndex)}
                       <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-200 via-pink-200 to-white font-black text-xs whitespace-nowrap tracking-wide">{currentTitle}</span>
                     </div>
-                    {/* 修改：貝殼 -> 蛋糕 */}
                     <div className="text-[10px] text-purple-300/90 font-black tracking-[0.2em] uppercase bg-purple-950/30 px-2.5 py-0.5 rounded border border-purple-500/30 shadow-sm flex items-center gap-1"><ShellIcon size={10} /> 蛋糕 {totalShellsConsumed}</div>
                   </div>
                 </div>
@@ -650,7 +525,6 @@
 
               <div className="px-8 mb-5 flex items-center justify-between z-10 relative opacity-70 text-[10px] font-black tracking-[0.3em] uppercase text-white">
                 <span>Canvas Tasks</span>
-                {/* 修改：貝殼 -> 蛋糕 */}
                 <button onClick={() => setSortBy(s => s === 'deadline' ? 'shell' : 'deadline')} className="flex items-center gap-1.5 font-bold bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors text-white"><ArrowUpDown size={10}/> {sortBy === 'deadline' ? '期限' : '蛋糕'}</button>
               </div>
 
@@ -659,8 +533,6 @@
                   incompleteTasks.sort((a,b) => sortBy === 'deadline' ? new Date(a.deadline) - new Date(b.deadline) : (a.shells||a.paints) - (b.shells||b.paints)).map(t => {
                     const zone = getZoneInfo(t.zone);
                     const isBursting = burstingTaskId === t.id;
-                    
-                    // 修正：使用純文字比較，避免 new Date() 的時區問題造成判定錯誤（今天被判為過期）
                     const isOverdue = t.deadline && t.deadline < toLocalYYYYMMDD(new Date());
 
                     return (
@@ -726,12 +598,10 @@
                       <textarea value={editName} onChange={(e) => setEditName(e.target.value)} rows={3} className="w-full bg-transparent text-lg font-bold text-white placeholder-slate-700 outline-none resize-none leading-relaxed"/>
                     </div>
 
-                    {/* 修改：日期與時間整合區塊 */}
                     <div className="bg-black/50 rounded-xl p-4 mb-4 border border-slate-800 focus-within:border-purple-500/50 transition-colors flex flex-col gap-3">
                        <div className="flex items-start gap-3">
                          <div className="text-purple-500 mt-1"><Clock size={18}/></div>
                          <div className="flex-1 w-full space-y-3">
-                           {/* 日期選擇 */}
                            <div className="flex-1">
                              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">完成日期 (Date)</label>
                              <input 
@@ -741,7 +611,6 @@
                                className="w-full bg-transparent text-white font-bold outline-none [color-scheme:dark]"
                              />
                            </div>
-                           {/* 新增：細節時間調整 */}
                            <div className="border-t border-white/10 pt-2 w-full">
                              <label className="text-[10px] text-purple-400 font-bold uppercase tracking-wider block mb-1 flex items-center gap-1">
                                 <AlarmClock size={10} /> 鬧鈴時間 (Alarm)
@@ -757,7 +626,6 @@
                        </div>
                     </div>
 
-                    {/* Google 日曆同步按鈕 */}
                     <button 
                       type="button" 
                       onClick={addToGoogleCalendar}
@@ -930,7 +798,6 @@
                   <div className="w-full max-w-md h-[92vh] bg-[#0c0a1a] rounded-t-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-20 duration-500 border-t border-purple-900/30 overflow-hidden font-sans">
                     <div className="p-8 border-b border-purple-900/30 bg-[#0c0a1a] flex justify-between items-center font-sans z-20 relative">
                       <div className="min-w-0 text-left font-sans">
-                        {/* 修改：Total Shells -> Total Cakes */}
                         <h2 className="text-2xl font-black text-white flex items-center gap-3 truncate font-sans uppercase tracking-wider"><span className="text-3xl drop-shadow-[0_0_10px_rgba(239,68,68,0.6)] text-red-400"><ShellIcon size={24}/></span> Gallery</h2>
                         <p className="text-[10px] text-purple-500 mt-1 font-black tracking-[0.3em] uppercase opacity-80 font-sans">Total Cakes: {totalShellsConsumed}</p>
                       </div>
@@ -957,7 +824,6 @@
                                 <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700 font-bold font-sans flex items-center gap-1">{t.shells || t.paints} <ShellIcon size={8}/></span>
                               </div>
                             </div>
-                            {/* 修正收藏區的刪除按鈕冒泡問題 */}
                             <button 
                               type="button" 
                               onClick={(e) => {
@@ -977,7 +843,6 @@
                 </div>
               )}
 
-              {/* 刪除確認視窗 - 移至最底層確保覆蓋在最上方 */}
               {taskToDelete && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-md p-8 font-sans">
                   <div className="w-full max-w-sm bg-[#0f172a] border border-red-900/50 rounded-2xl p-10 text-center animate-in zoom-in-95 duration-300 shadow-[0_0_50px_rgba(220,38,38,0.2)] font-sans relative overflow-hidden">
@@ -992,7 +857,6 @@
                     </p>
                     
                     <div className="flex flex-col gap-3 font-sans">
-                       {/* 增加 isDeleting 狀態，防止重複提交 */}
                        <button 
                          type="button" 
                          onClick={(e) => {
@@ -1020,7 +884,6 @@
           );
         }
 
-        // 渲染 App
         const root = createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>

@@ -66,15 +66,18 @@
           Image as ImageIcon, Archive, RotateCcw, Key, Sparkles
         } from 'lucide-react';
 
-        // --- Firebase Config (若沒填則自動使用本地模式) ---
+        // =================================================================
+        // ★★★ 請在這裡貼上妳的 Firebase Config ★★★
+        // =================================================================
         const firebaseConfig = {
-            apiKey: "", 
+            apiKey: "",
             authDomain: "",
             projectId: "",
             storageBucket: "",
             messagingSenderId: "",
             appId: ""
         };
+        // =================================================================
 
         // --- 初始化邏輯 ---
         let app, auth, db;
@@ -91,10 +94,10 @@
                 console.log("💾 Local Storage Mode (Offline)");
             }
         } catch (e) {
-            console.warn("Firebase init skipped (using local storage):", e);
+            console.warn("Firebase init skipped:", e);
         }
         
-        const appId = 'rafayel-todo-v2-sync'; 
+        const appId = 'rafayel-todo-v3-final'; 
         const STORAGE_KEY_TASKS = 'rafayel_local_tasks_v2'; 
 
         // --- AI 設定 ---
@@ -217,8 +220,7 @@
           
           const [chatUserAvatar, setChatUserAvatar] = useState(localStorage.getItem('chat_user_avatar') || null);
           const [chatRafAvatar, setChatRafAvatar] = useState(localStorage.getItem('chat_raf_avatar') || 'https://i.pinimg.com/564x/0a/a7/6c/0aa76c8c1e40a0222b4065675e812543.jpg'); 
-          const chatUserFileRef = useRef(null);
-          const chatRafFileRef = useRef(null);
+          // 移除 distants refs for chat (因為手機端問題)
           const chatEndRef = useRef(null);
 
           const completedTasks = useMemo(() => tasks.filter(t => t.completed), [tasks]);
@@ -260,7 +262,6 @@
             init();
           }, []);
 
-          // Helper to update tasks
           const updateTasks = (newTasks) => {
               setTasks(newTasks);
               if (!isFirebaseActive) {
@@ -292,7 +293,7 @@
             return quote;
           };
 
-          // ★★★ 關鍵修復：把這個函式移到前面，讓大家都能讀到 ★★★
+          // ★★★ 關鍵修復：這裡定義了，後面 handleAddTask 就能呼叫 ★★★
           const triggerRafayelPopup = (zoneId, isCompletion = false) => {
             const text = isCompletion ? getRandomQuote('completed') : getRandomQuote(zoneId);
             setRafayelPopup({ show: true, text });
@@ -327,7 +328,6 @@
             if (apiKey) { setIsAiTyping(true); callGeminiAI(msg); }
             else { 
                 setTimeout(() => {
-                    // 離線對話模式
                     let response = getRandomQuote('default');
                     const lowerInput = msg.toLowerCase();
                     if (lowerInput.includes('愛') || lowerInput.includes('喜歡')) response = "嗯...我也很愛你。";
@@ -345,6 +345,25 @@
 
           const handleAvatarClick = () => { if (fileInputRef.current) { fileInputRef.current.value = ''; fileInputRef.current.click(); } };
           const onFileChange = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { setRawImage(reader.result); setIsCropModalOpen(true); setImageLoaded(false); }; reader.readAsDataURL(file); e.target.value = ''; };
+          
+          // 聊天室大頭貼上傳 (專為手機修復)
+          const handleChatAvatarUpload = (e, type) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const result = ev.target.result;
+                if (type === 'user') {
+                    setChatUserAvatar(result); localStorage.setItem('chat_user_avatar', result);
+                    if (isFirebaseActive && user) await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile_rafayel_v1', 'info'), { chatUserAvatar: result }, { merge: true });
+                } else {
+                    setChatRafAvatar(result); localStorage.setItem('chat_raf_avatar', result);
+                    if (isFirebaseActive && user) await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile_rafayel_v1', 'info'), { chatRafAvatar: result }, { merge: true });
+                }
+            };
+            reader.readAsDataURL(file);
+          };
+
           const handleCropSave = async () => {
             const canvas = canvasRef.current; const imgElement = cropImgRef.current;
             if (!canvas || !imgElement || !imageLoaded) return;
@@ -393,7 +412,6 @@
           const resetForm = () => { setTaskName(''); setDeadline(''); setSelectedZone(null); setSelectedShell(null); setModalStep(1); setIsModalOpen(false); };
           const toLocalYYYYMMDD = (d) => { const year = d.getFullYear(); const month = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0'); return `${year}-${month}-${day}`; };
           
-          // --- Universal Task Handlers ---
           const handleAddTask = async () => {
             if (!taskName.trim() || !selectedZone || !selectedShell || !deadline) return;
             const newTask = { name: taskName, zone: selectedZone, shells: Number(selectedShell), paints: Number(selectedShell), deadline, completed: false, createdAt: new Date().toISOString() };
@@ -404,7 +422,6 @@
                 newTask.id = Date.now().toString();
                 updateTasks([...tasks, newTask]);
             }
-            // ★★★ 這裡現在安全了，因為 triggerRafayelPopup 已經在上面定義了 ★★★
             triggerRafayelPopup(selectedZone); 
             resetForm();
           };
@@ -543,8 +560,28 @@
                             <div className="absolute top-20 left-4 right-4 bg-[#1e1b4b] border border-purple-800 rounded-xl p-4 z-20 shadow-xl animate-in slide-in-from-top-5 duration-200">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Chat Settings</h4>
                                 <div className="flex gap-4 mb-4">
-                                    <div className="flex-1 flex flex-col items-center gap-2"><span className="text-[10px] text-slate-500">YOU</span><div onClick={() => chatUserFileRef.current.click()} className="w-16 h-16 rounded-full bg-black border border-slate-700 overflow-hidden cursor-pointer relative group"><img src={chatUserAvatar || avatar} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><ImageIcon size={16}/></div></div><input type="file" ref={chatUserFileRef} onChange={(e) => handleChatAvatarUpload(e, 'user')} className="hidden" /></div>
-                                    <div className="flex-1 flex flex-col items-center gap-2"><span className="text-[10px] text-purple-500">RAFAYEL</span><div onClick={() => chatRafFileRef.current.click()} className="w-16 h-16 rounded-full bg-black border border-slate-700 overflow-hidden cursor-pointer relative group"><img src={chatRafAvatar} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><ImageIcon size={16}/></div></div><input type="file" ref={chatRafFileRef} onChange={(e) => handleChatAvatarUpload(e, 'raf')} className="hidden" /></div>
+                                    <div className="flex-1 flex flex-col items-center gap-2">
+                                        <span className="text-[10px] text-slate-500">YOU</span>
+                                        {/* 手機版修復：使用透明 input 覆蓋，點擊時直接觸發檔案選擇 */}
+                                        <div className="w-16 h-16 rounded-full bg-black border border-slate-700 overflow-hidden relative group">
+                                            <img src={chatUserAvatar || avatar} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                <ImageIcon size={16}/>
+                                            </div>
+                                            <input type="file" onChange={(e) => handleChatAvatarUpload(e, 'user')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Change Avatar" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center gap-2">
+                                        <span className="text-[10px] text-purple-500">RAFAYEL</span>
+                                        {/* 手機版修復：使用透明 input 覆蓋 */}
+                                        <div className="w-16 h-16 rounded-full bg-black border border-slate-700 overflow-hidden relative group">
+                                            <img src={chatRafAvatar} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                <ImageIcon size={16}/>
+                                            </div>
+                                            <input type="file" onChange={(e) => handleChatAvatarUpload(e, 'raf')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Change Avatar" />
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="border-t border-white/10 pt-4">
                                     <label className="text-[10px] text-purple-400 font-bold uppercase tracking-wider block mb-2 flex items-center gap-2"><Key size={12}/> Gemini API Key</label>

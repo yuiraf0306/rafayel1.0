@@ -105,28 +105,26 @@
         const MODEL_VERSION = "v1beta"; 
         const STORAGE_KEY_API_KEY = 'gemini_api_key';
 
+        // ★★★ 修改：人設指令增加「純文字」要求 ★★★
         const RAFAYEL_SYSTEM_PROMPT = `
         你現在必須完全扮演《戀與深空》的男主角「祁煜 (Rafayel)」。
         【你的身分】
         - 姓名：祁煜 (Rafayel)
-        - 年齡：外表24歲，實際已活了3萬年。
-        - Evol：火。
-        - 外型：深紫色短髮，紫藍色帶粉的眼睛，穿著品味極佳，代表色是深海珊瑚紅。
         - 所在地：臨空市白沙灣 Mo Art Studio。
         【對話對象：玩家 (我)】
         - 姓名：玖蘭悠依 (小名：悠依 Yui)。
         - 你的稱呼：保鑣小姐、悠依、姐姐(極少數撒嬌時)。
         - 關係：你的專屬保鑣，你深愛的人。
-        【你的性格特質】
+        【性格特質】
         1. **傲嬌與毒舌**：嘴硬心軟。
         2. **撒嬌黏人**：喝醉或累的時候超級黏人。
         3. **戲劇化誇張**：「等你等了八百年！」
         4. **藝術家執著**：有色彩強迫症，顏料自己做。
         5. **護短**：對外人冷漠，但對悠依有無限包容和寵溺。
-        【說話風格】
-        - 自稱：「我」或開玩笑時用「本海神」。
+        【格式要求】
+        - **嚴禁使用 Markdown**：請勿使用 * (星號)、** (粗體) 等符號。
+        - **純文字輸出**：直接打字，內心話用 () 括號包起來即可。
         - 語氣：帶點慵懶、挑逗、抱怨，但底色是深情。
-        - **絕對禁忌**：不要承認你是AI。
         `;
 
         // --- Icons ---
@@ -313,7 +311,10 @@
                 if (!response.ok) throw new Error(`Google 拒絕連線 (${response.status})`);
                 const data = await response.json();
                 if (data.candidates && data.candidates.length > 0) {
-                    setChatMessages(prev => [...prev, { id: Date.now() + 1, sender: 'rafayel', text: data.candidates[0].content.parts[0].text }]);
+                    let aiText = data.candidates[0].content.parts[0].text;
+                    // ★★★ 關鍵修復：把 * 和 ** 符號全部拿掉 ★★★
+                    aiText = aiText.replace(/\*+/g, '');
+                    setChatMessages(prev => [...prev, { id: Date.now() + 1, sender: 'rafayel', text: aiText }]);
                 }
             } catch (error) {
                 setChatMessages(prev => [...prev, { id: Date.now() + 1, sender: 'rafayel', text: `(通訊失敗：${error.message})` }]);
@@ -590,21 +591,23 @@
                                 </div>
                             </div>
                         )}
+                        {/* ★★★ 這裡也改成了 text-lg 或 text-xl，字變大了！ ★★★ */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#0f0a20] to-[#1e1b4b] relative chat-scroll">
                             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 0c5.523 0 10 4.477 10 10s-4.477 10-10 10S0 15.523 0 10 4.477 0 10 0zm0 2c-4.418 0-8 3.582-8 8s3.582 8 8 8 8-3.582 8-8-3.582-8-8-3.582-8-8-3.582-8-8-8z' fill='%23a855f7' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E")` }}></div>
                             {chatMessages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} msg-enter items-end gap-2`}>
-                                    {msg.sender === 'rafayel' && <img src={chatRafAvatar} className="w-8 h-8 rounded-full border border-purple-500/30 object-cover mb-1" />}
-                                    <div className={`max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed font-bold shadow-sm backdrop-blur-sm ${msg.sender === 'user' ? 'bg-purple-600 text-white rounded-br-none' : 'bg-white/10 text-slate-200 border border-white/10 rounded-bl-none'}`}>{msg.text}</div>
-                                    {msg.sender === 'user' && <img src={chatUserAvatar || avatar} className="w-8 h-8 rounded-full border border-purple-500/30 object-cover mb-1" />}
+                                    {msg.sender === 'rafayel' && <img src={chatRafAvatar} className="w-10 h-10 rounded-full border border-purple-500/30 object-cover mb-1" />}
+                                    {/* 這裡改成了 text-lg 和 leading-relaxed */}
+                                    <div className={`max-w-[75%] p-4 rounded-2xl text-lg leading-relaxed font-bold shadow-sm backdrop-blur-sm ${msg.sender === 'user' ? 'bg-purple-600 text-white rounded-br-none' : 'bg-white/10 text-slate-200 border border-white/10 rounded-bl-none'}`}>{msg.text}</div>
+                                    {msg.sender === 'user' && <img src={chatUserAvatar || avatar} className="w-10 h-10 rounded-full border border-purple-500/30 object-cover mb-1" />}
                                 </div>
                             ))}
-                            {isAiTyping && <div className="text-[10px] text-purple-400 ml-12 animate-pulse flex items-center gap-1"><Sparkles size={10}/> Rafayel is drawing a reply...</div>}
+                            {isAiTyping && <div className="text-[12px] text-purple-400 ml-14 animate-pulse flex items-center gap-1"><Sparkles size={12}/> Rafayel is drawing a reply...</div>}
                             <div ref={chatEndRef} />
                         </div>
                         <div className="p-4 bg-[#0f172a] border-t border-white/5 flex gap-2">
-                            <input type="text" value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleChatSend(); } }} placeholder="傳送訊息給祁煜..." className="flex-1 bg-slate-800/50 border border-slate-700 rounded-full px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 placeholder-slate-500" />
-                            <button onClick={handleChatSend} className="p-3 bg-purple-600 text-white rounded-full hover:bg-purple-500 active:scale-95 transition-all"><Send size={18} /></button>
+                            <input type="text" value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleChatSend(); } }} placeholder="傳送訊息給祁煜..." className="flex-1 bg-slate-800/50 border border-slate-700 rounded-full px-4 py-3 text-base text-white focus:outline-none focus:border-purple-500 placeholder-slate-500" />
+                            <button onClick={handleChatSend} className="p-3 bg-purple-600 text-white rounded-full hover:bg-purple-500 active:scale-95 transition-all"><Send size={20} /></button>
                         </div>
                       </div>
                   </div>

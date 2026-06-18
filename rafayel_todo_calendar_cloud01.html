@@ -1,14 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-	<script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18",
-      "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime"
-    }
-  }
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mo Art Studio</title>
@@ -65,8 +57,8 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        import React, { useState, useEffect, useRef, useMemo } from 'react';
-        import { createRoot } from 'react-dom/client';
+const { useState, useEffect, useRef, useMemo } = window.React;
+const { createRoot } = window.ReactDOM;
         import { createPortal } from 'react-dom';
         import * as LucideIcons from 'lucide-react';
         
